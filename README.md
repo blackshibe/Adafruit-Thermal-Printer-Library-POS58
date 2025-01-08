@@ -5,7 +5,7 @@
 The default Adafruit driver sends commands not mentioned in the datasheet at all -
 POS58 also draws each byte as a column, 8 pixels high making things even more annoying.
 
-As
+This library communicates with it correctly, getting around the stupidly small buffer the library provides for printing.
 
 This is an Arduino library for the Adafruit Thermal Printer.
 Pick one up at --> https://www.adafruit.com/product/597
