@@ -1,5 +1,3 @@
-# !!! NOTE !!!
-
 # Adafruit Thermal Printer POS58 Library
 
 The default Adafruit driver sends commands not mentioned in the datasheet at all -
