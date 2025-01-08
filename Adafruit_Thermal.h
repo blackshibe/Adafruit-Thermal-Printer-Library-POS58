@@ -180,25 +180,13 @@ public:
      */
     printBarcode(const char *text, uint8_t type),
     /*!
-     * @brief Prints a bitmap
+     * @brief Prints a bitmap for POS58 driver devices
      * @param w Width of the image in pixels
      * @param h Height of the image in pixels
      * @param bitmap Bitmap data, from a file.
      * @param fromProgMem
      */
-    printBitmap(int w, int h, const uint8_t *bitmap, bool fromProgMem=true),
-    /*!
-     * @brief Prints a bitmap
-     * @param w Width of the image in pixels
-     * @param h Height of the image in pixels
-     * @param fromStream Stream to get bitmap data from
-     */
-    printBitmap(int w, int h, Stream *fromStream),
-    /*!
-     * @brief Prints a bitmap
-     * @param fromStream Stream to get bitmap data from
-     */
-    printBitmap(Stream *fromStream),
+    printPos58Bitmap(int w, int h, const uint8_t *bitmap, bool fromProgMem),
     /*!
      * @brief Sets text to normal mode
      */ 
@@ -245,7 +233,7 @@ public:
      * @brief Set max rows to write
      * @param val Max rows to write
      */
-    setMaxChunkHeight(int val=256),
+    setMaxChunkBytes(int val=256),
     /*!
      * @brief Sets text size
      * @param value Text size
@@ -330,13 +318,13 @@ public:
      */
     wake();
   bool
-    /*!
-     * @brief Whether or not the printer has paper
-     * @return Returns true if there is still paper
-     */
-    hasPaper();
+  /*!
+   * @brief Whether or not the printer has paper
+   * @return Returns true if there is still paper
+   */
+  hasPaper();
 
-private:
+  private:
   Stream *stream;
   uint8_t printMode,
       prevByte,      // Last character issued to printer
@@ -352,7 +340,8 @@ private:
   unsigned long
       resumeTime,   // Wait until micros() exceeds this before sending byte
       dotPrintTime, // Time to print a single dot line, in microseconds
-      dotFeedTime;  // Time to feed a single dot line, in microseconds
+      dotFeedTime,  // Time to feed a single dot line, in microseconds
+      maxChunkBytes;// Maximum bytes allowed in one bitmap upload chunk
   void writeBytes(uint8_t a), writeBytes(uint8_t a, uint8_t b),
       writeBytes(uint8_t a, uint8_t b, uint8_t c),
       writeBytes(uint8_t a, uint8_t b, uint8_t c, uint8_t d),

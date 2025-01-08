@@ -188,7 +188,7 @@ void Adafruit_Thermal::begin(uint16_t version) {
 
   dotPrintTime = 30000; // See comments near top of file for
   dotFeedTime = 2100;   // an explanation of these values.
-  maxChunkHeight = 255;
+  maxChunkBytes = 6144;
 }
 
 // Reset printer to default state.
@@ -492,99 +492,50 @@ void Adafruit_Thermal::underlineOn(uint8_t weight) {
 
 void Adafruit_Thermal::underlineOff() { writeBytes(ASCII_ESC, '-', 0); }
 
-void Adafruit_Thermal::printBitmap(int w, int h, const uint8_t *bitmap,
+unsigned char reverse(unsigned char b) {
+   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+   return b;
+}
+
+/*
+http://www.easovation.com/wp-content/uploads/2018/06/HOPE58.pdf
+The default Adafruit driver sends commands not mentioned in the datasheet at all - 
+POS58 also draws each byte as a column, 8 pixels high making things even more annoying.
+
+Image buffer can be made with https://javl.github.io/image2cpp/ - Export with inverted color, Vertical 1 bpp
+
+```
+void *buffer = malloc(map.size());
+map.readBytes((char*)buffer, map.size());
+myPrinter.printPos58Bitmap(384, 384, BITMAP, false);
+```
+*/
+void Adafruit_Thermal::printPos58Bitmap(int img_w, int img_h, const uint8_t *bitmap,
                                    bool fromProgMem) {
-  int rowBytes, rowBytesClipped, rowStart, chunkHeight, chunkHeightLimit, x, y,
-      i;
+  int x = img_w / 8;
+  int y = img_h / 8;
+  int k = x * y * 8;
+  int actualHeight = min(img_h, (int)(maxChunkBytes / img_w)) / 8;
 
-  rowBytes = (w + 7) / 8; // Round up to next byte boundary
-  rowBytesClipped = (rowBytes >= 48) ? 48 : rowBytes; // 384 pixels max width
+  for (int chunkPosition = 0; chunkPosition < y; chunkPosition += actualHeight) {
+    writeBytes(ASCII_GS, '*', x, actualHeight);
 
-  // Est. max rows to write at once, assuming 256 byte printer buffer.
-  if (dtrEnabled) {
-    chunkHeightLimit = 255; // Buffer doesn't matter, handshake!
-  } else {
-    chunkHeightLimit = 256 / rowBytesClipped;
-    if (chunkHeightLimit > maxChunkHeight)
-      chunkHeightLimit = maxChunkHeight;
-    else if (chunkHeightLimit < 1)
-      chunkHeightLimit = 1;
-  }
+    for (int i_x = 0; i_x < img_w; i_x++) {
+      for (int i_y = chunkPosition; i_y < chunkPosition + actualHeight; i_y++) {
+        uint16_t i = (img_h * i_y) + i_x;
+        uint8_t b = fromProgMem ? pgm_read_byte(bitmap + i) : *(bitmap + i);
 
-  for (i = rowStart = 0; rowStart < h; rowStart += chunkHeightLimit) {
-    // Issue up to chunkHeightLimit rows at a time:
-    chunkHeight = h - rowStart;
-    if (chunkHeight > chunkHeightLimit)
-      chunkHeight = chunkHeightLimit;
-
-    writeBytes(ASCII_DC2, '*', chunkHeight, rowBytesClipped);
-
-    for (y = 0; y < chunkHeight; y++) {
-      for (x = 0; x < rowBytesClipped; x++, i++) {
+        // convert endianness
         timeoutWait();
-        stream->write(fromProgMem ? pgm_read_byte(bitmap + i) : *(bitmap + i));
-      }
-      i += rowBytes - rowBytesClipped;
-    }
-    timeoutSet(chunkHeight * dotPrintTime);
-  }
-  prevByte = '\n';
-}
-
-void Adafruit_Thermal::printBitmap(int w, int h, Stream *fromStream) {
-  int rowBytes, rowBytesClipped, rowStart, chunkHeight, chunkHeightLimit, x, y,
-      i, c;
-
-  rowBytes = (w + 7) / 8; // Round up to next byte boundary
-  rowBytesClipped = (rowBytes >= 48) ? 48 : rowBytes; // 384 pixels max width
-
-  // Est. max rows to write at once, assuming 256 byte printer buffer.
-  if (dtrEnabled) {
-    chunkHeightLimit = 255; // Buffer doesn't matter, handshake!
-  } else {
-    chunkHeightLimit = 256 / rowBytesClipped;
-    if (chunkHeightLimit > maxChunkHeight)
-      chunkHeightLimit = maxChunkHeight;
-    else if (chunkHeightLimit < 1)
-      chunkHeightLimit = 1;
-  }
-
-  for (rowStart = 0; rowStart < h; rowStart += chunkHeightLimit) {
-    // Issue up to chunkHeightLimit rows at a time:
-    chunkHeight = h - rowStart;
-    if (chunkHeight > chunkHeightLimit)
-      chunkHeight = chunkHeightLimit;
-
-    writeBytes(ASCII_DC2, '*', chunkHeight, rowBytesClipped);
-
-    for (y = 0; y < chunkHeight; y++) {
-      for (x = 0; x < rowBytesClipped; x++) {
-        while ((c = fromStream->read()) < 0)
-          ;
-        timeoutWait();
-        stream->write((uint8_t)c);
-      }
-      for (i = rowBytes - rowBytesClipped; i > 0; i--) {
-        while ((c = fromStream->read()) < 0)
-          ;
+        stream->write(reverse(b));
       }
     }
-    timeoutSet(chunkHeight * dotPrintTime);
+
+    writeBytes(ASCII_GS, '/', 0);
+    timeoutSet(dotFeedTime * actualHeight);
   }
-  prevByte = '\n';
-}
-
-void Adafruit_Thermal::printBitmap(Stream *fromStream) {
-  uint8_t tmp;
-  uint16_t width, height;
-
-  tmp = fromStream->read();
-  width = (fromStream->read() << 8) + tmp;
-
-  tmp = fromStream->read();
-  height = (fromStream->read() << 8) + tmp;
-
-  printBitmap(width, height, fromStream);
 }
 
 // Take the printer offline. Print commands sent after this will be
@@ -662,7 +613,7 @@ void Adafruit_Thermal::setLineHeight(int val) {
   writeBytes(ASCII_ESC, '3', val);
 }
 
-void Adafruit_Thermal::setMaxChunkHeight(int val) { maxChunkHeight = val; }
+void Adafruit_Thermal::setMaxChunkBytes(int val) { maxChunkHeight = val; }
 
 // These commands work only on printers w/recent firmware ------------------
 

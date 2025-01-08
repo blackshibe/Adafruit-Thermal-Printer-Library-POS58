@@ -1,8 +1,11 @@
 # !!! NOTE !!!
-# THIS REPOSITORY IS ARCHIVED AND IS NO LONGER SUPPORTED OR MAINTAINED
 
-# Adafruit Thermal Printer Library [![Build Status](https://github.com/adafruit/Adafruit-Thermal-Printer-Library/workflows/Arduino%20Library%20CI/badge.svg)](https://github.com/adafruit/Adafruit-Thermal-Printer-Library/actions)[![Documentation](https://github.com/adafruit/ci-arduino/blob/master/assets/doxygen_badge.svg)](http://adafruit.github.io/Adafruit-Thermal-Printer-Library/html/index.html)
+# Adafruit Thermal Printer POS58 Library
 
+The default Adafruit driver sends commands not mentioned in the datasheet at all -
+POS58 also draws each byte as a column, 8 pixels high making things even more annoying.
+
+As
 
 This is an Arduino library for the Adafruit Thermal Printer.
 Pick one up at --> https://www.adafruit.com/product/597
@@ -19,7 +22,7 @@ On your Mac:: In (home directory)/Documents/Arduino/Libraries
 On your PC:: My Documents\Arduino\libraries
 On your Linux box: (home directory)/sketchbook/libraries
 
-Adafruit invests time and resources providing this open source code.  Please support Adafruit and open-source hardware by purchasing products from Adafruit!
+Adafruit invests time and resources providing this open source code. Please support Adafruit and open-source hardware by purchasing products from Adafruit!
 
-Written by Limor Fried/Ladyada for Adafruit Industries, with contributions from the open source community.  Originally based on Thermal library from bildr.org
+Written by Limor Fried/Ladyada for Adafruit Industries, with contributions from the open source community. Originally based on Thermal library from bildr.org
 MIT license, all text above must be included in any redistribution.
